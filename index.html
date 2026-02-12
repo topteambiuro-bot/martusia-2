@@ -13,7 +13,6 @@
             --glow: 0 0 20px rgba(255, 45, 85, 0.5);
         }
 
-        /* PASEK POSTĘPU */
         .progress-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 8px;
             background: rgba(255, 255, 255, 0.1); z-index: 1000;
@@ -66,22 +65,19 @@
         .card { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
         .card.flipped { background: var(--primary); box-shadow: var(--glow); }
 
-        #arrow { font-size: 100px; color: var(--primary); filter: drop-shadow(0 0 25px var(--primary)); margin: 20px 0; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #arrow { font-size: 100px; color: var(--primary); filter: drop-shadow(0 0 25px var(--primary)); margin: 20px 0; transition: transform 0.2s ease-out; }
         #distance { font-size: 5rem; font-weight: 900; text-shadow: var(--glow); }
 
         .note-popup { position: fixed; color: var(--accent); font-style: italic; pointer-events: none; animation: floatUp 1s forwards; z-index: 100; }
         @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-50px); } }
 
-        /* NOWY STYL DLA POWIADOMIENIA */
         #easy-mode-alert {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(255, 45, 85, 0.9); padding: 15px 25px; border-radius: 20px;
+            background: rgba(255, 45, 85, 0.95); padding: 20px; border-radius: 25px;
             font-weight: bold; font-size: 0.9rem; z-index: 100; display: none;
-            animation: fadeInOut 3s forwards; pointer-events: none;
+            animation: fadeInOut 3s forwards; pointer-events: none; border: 2px solid white;
         }
-        @keyframes fadeInOut {
-            0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
-        }
+        @keyframes fadeInOut { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
     </style>
 </head>
 <body>
@@ -100,7 +96,7 @@
     <div id="step-flappy" class="screen">
         <h1>Lot Serca</h1>
         <p id="flappy-desc" style="font-size: 0.8rem; opacity: 0.7;">Zdobądź 35 punktów!</p>
-        <div id="easy-mode-alert">Kochanie, ułatwiam Ci zadanie! ❤️<br>Limit: 20 pkt</div>
+        <div id="easy-mode-alert">Kochanie, ułatwiam Ci zadanie! ❤️<br>Teraz tylko 20 pkt!</div>
         <canvas id="flappy-canvas" width="300" height="350" style="background:rgba(0,0,0,0.2); border-radius:20px;"></canvas>
     </div>
 
@@ -114,7 +110,7 @@
     <div id="step3" class="screen">
         <h1>Szyfr Serca</h1>
         <p>RUDE KOCHANE STWORZENIE?</p>
-        <input type="text" id="answerInput" placeholder="Odpowiedź...">
+        <input type="text" id="answerInput" placeholder="Wpisz imię...">
         <button class="btn-main" onclick="checkAnswer()">Zweryfikuj</button>
     </div>
 
@@ -129,6 +125,7 @@
         <div id="arrow">➔</div>
         <div id="distance">--</div>
         <div style="letter-spacing: 5px; font-size: 0.7rem; opacity: 0.7;">METRÓW</div>
+        <p style="font-size:0.6rem; margin-top:20px; opacity:0.5;">Obracaj telefonem, by wskazać kierunek</p>
     </div>
 
     <div id="final" class="screen">
@@ -142,6 +139,9 @@
         const CORRECT_ANSWER = "pimpek"; 
         const loveNotes = ["Jesteś cudowna", "Mój skarb", "Kocham Cię", "Za Twój uśmiech", "Za nasze chwile", "Moja jedyna", "Dziękuję, że jesteś", "Zawsze Ty", "Na zawsze", "Moje szczęście", "Uwielbiam Cię", "Mój świat"];
         const screens = ['step1', 'step-flappy', 'step2', 'step3', 'step4', 'step5', 'final'];
+
+        let currentBearingToTarget = 0;
+        let deviceHeading = 0;
 
         if(localStorage.getItem('gps_unlocked') === 'true') {
             document.getElementById('restore-gps').style.display = 'block';
@@ -168,11 +168,10 @@
             if(id === 'step4') initMemory();
         }
 
-        // --- GRA 1: AMOR ---
+        // --- AMOR ---
         const canvas = document.getElementById('amor-canvas');
         const ctx = canvas.getContext('2d');
         let hits = 0, aArrow = null, targetH = { x: 50, y: 50, dir: 2.5 };
-
         function drawAmor() {
             if(!document.getElementById('step1').classList.contains('active')) return;
             ctx.clearRect(0,0,300,300);
@@ -188,66 +187,42 @@
                 }
                 else if(aArrow.y < 0) { hits = 0; aArrow = null; alert("Pudło! Reset!"); }
             }
-            ctx.fillStyle = "white"; ctx.font = "14px Arial"; 
-            ctx.fillText("Trafienia: " + hits + "/7", 10, 20);
+            ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.fillText("Trafienia: " + hits + "/7", 10, 20);
             requestAnimationFrame(drawAmor);
         }
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(!aArrow) aArrow = {x: 135, y: 250}; });
         drawAmor();
 
-        // --- GRA 2: FLAPPY HEART (Z LICZNIKIEM PRÓB) ---
+        // --- FLAPPY HEART ---
         const fCanvas = document.getElementById('flappy-canvas');
         const fCtx = fCanvas.getContext('2d');
         let heart = { y: 150, v: 0 }, pipes = [], fScore = 0, fActive = false, deathCount = 0, fLimit = 35;
-
         function initFlappy() { fActive = true; heart.y = 150; heart.v = 0; pipes = []; fScore = 0; spawnPipe(); drawFlappy(); }
         function spawnPipe() { pipes.push({ x: 300, top: Math.random()*150+50, passed: false }); }
-        
         function drawFlappy() {
             if(!fActive || !document.getElementById('step-flappy').classList.contains('active')) return;
             fCtx.clearRect(0,0,300,350);
             heart.v += 0.22; heart.y += heart.v;
             fCtx.font = "25px Arial"; fCtx.fillText("❤️", 50, heart.y);
-            
             for(let i=pipes.length-1; i>=0; i--) {
                 pipes[i].x -= 2.2;
                 fCtx.fillStyle = "rgba(255,45,85,0.5)";
                 fCtx.fillRect(pipes[i].x, 0, 40, pipes[i].top);
                 fCtx.fillRect(pipes[i].x, pipes[i].top + 100, 40, 350);
                 if(50 > pipes[i].x && 50 < pipes[i].x+40 && (heart.y-20 < pipes[i].top || heart.y+5 > pipes[i].top+100)) handleDeath();
-                if(!pipes[i].passed && pipes[i].x < 50) { 
-                    fScore++; pipes[i].passed = true; 
-                    if(fScore >= fLimit) { fActive = false; next('step2'); return; } 
-                }
+                if(!pipes[i].passed && pipes[i].x < 50) { fScore++; pipes[i].passed = true; if(fScore >= fLimit) { fActive = false; next('step2'); return; } }
                 if(pipes[i].x < -40) pipes.splice(i,1);
             }
             if(pipes.length > 0 && pipes[pipes.length-1].x < 140) spawnPipe();
             if(heart.y > 350 || heart.y < 0) handleDeath();
-
-            // Interfejs gry
-            fCtx.fillStyle = "white"; 
-            fCtx.font = "bold 16px Arial"; 
-            fCtx.fillText("PUNKTY: "+fScore+" / " + fLimit, 15, 25);
-            fCtx.font = "12px Arial";
-            fCtx.fillStyle = "rgba(255,255,255,0.6)";
-            fCtx.fillText("PRÓBA: " + (deathCount + 1), 230, 25);
-
+            fCtx.fillStyle = "white"; fCtx.font = "bold 16px Arial"; fCtx.fillText("PKT: "+fScore+" / " + fLimit, 15, 25);
+            fCtx.fillStyle = "rgba(255,255,255,0.6)"; fCtx.font = "12px Arial"; fCtx.fillText("PRÓBA: " + (deathCount+1), 230, 25);
             requestAnimationFrame(drawFlappy);
         }
-
-        function handleDeath() { 
-            fActive = false; 
-            deathCount++; 
-            if(deathCount === 10) { 
-                fLimit = 20; 
-                document.getElementById('flappy-desc').innerText = "Zdobądź 20 punktów (Ułatwione)"; 
-                document.getElementById('easy-mode-alert').style.display = 'block';
-            } 
-            setTimeout(initFlappy, 600); 
-        }
+        function handleDeath() { fActive = false; deathCount++; if(deathCount === 10) { fLimit = 20; document.getElementById('flappy-desc').innerText = "Zdobądź 20 punktów (Ułatwione)"; document.getElementById('easy-mode-alert').style.display = 'block'; } setTimeout(initFlappy, 600); }
         fCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); heart.v = -4.5; });
 
-        // --- RESZTA LOGIKI ---
+        // --- PŁATKI ---
         function initPetals() {
             const area = document.getElementById('petal-area'); area.innerHTML = '';
             let left = loveNotes.length;
@@ -266,12 +241,13 @@
             });
         }
 
+        // --- SZYFR ---
         function checkAnswer() { 
             const val = document.getElementById('answerInput').value.toLowerCase().trim();
-            if(val === CORRECT_ANSWER) next('step4'); 
-            else alert("Zła odpowiedź! ❤️"); 
+            if(val === CORRECT_ANSWER) next('step4'); else alert("To nie to stworzonko! ❤️"); 
         }
 
+        // --- MEMORY ---
         function initMemory() {
             const grid = document.getElementById('grid'); grid.innerHTML = '';
             const items = ['❤️','🔥','💍','❤️','🔥','💍'].sort(()=>Math.random()-0.5);
@@ -282,24 +258,37 @@
                     c.innerText = icon; c.classList.add('flipped');
                     const active = document.querySelectorAll('#step4 .flipped:not(.matched)');
                     if(active.length === 2) {
-                        if(active[0].innerText === active[1].innerText) {
-                            active.forEach(a => a.classList.add('matched'));
-                            if(document.querySelectorAll('.matched').length === 6) setTimeout(()=>next('step5'), 800);
-                        } else { setTimeout(() => active.forEach(a => {a.classList.remove('flipped'); a.innerText=''}), 600); }
+                        if(active[0].innerText === active[1].innerText) { active.forEach(a => a.classList.add('matched')); if(document.querySelectorAll('.matched').length === 6) setTimeout(()=>next('step5'), 800); }
+                        else { setTimeout(() => active.forEach(a => {a.classList.remove('flipped'); a.innerText=''}), 600); }
                     }
                 };
                 grid.appendChild(c);
             });
         }
 
+        // --- GPS & COMPASS ---
         function startGps() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(response => {
+                    if (response == 'granted') window.addEventListener('deviceorientation', handleOrientation, true);
+                }).catch(console.error);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+
             navigator.geolocation.watchPosition(pos => {
                 const d = calcDist(pos.coords.latitude, pos.coords.longitude, targetPos.lat, targetPos.lon);
-                const b = calcBear(pos.coords.latitude, pos.coords.longitude, targetPos.lat, targetPos.lon);
+                currentBearingToTarget = calcBear(pos.coords.latitude, pos.coords.longitude, targetPos.lat, targetPos.lon);
                 document.getElementById('distance').innerText = Math.round(d);
-                document.getElementById('arrow').style.transform = `rotate(${b - 90}deg)`;
                 if(d < 15) next('final');
-            }, (err) => { console.log("GPS error"); }, {enableHighAccuracy: true});
+            }, (err) => alert("Włącz GPS!"), {enableHighAccuracy: true});
+        }
+
+        function handleOrientation(event) {
+            if (event.webkitCompassHeading) deviceHeading = event.webkitCompassHeading;
+            else deviceHeading = 360 - event.alpha;
+            const arrowRotation = currentBearingToTarget - deviceHeading;
+            document.getElementById('arrow').style.transform = `rotate(${arrowRotation}deg)`;
         }
 
         function calcDist(l1, o1, l2, o2) {
@@ -308,10 +297,12 @@
             const a = Math.sin(dL/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dO/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
+
         function calcBear(l1, o1, l2, o2) {
-            const y = Math.sin((o2-o1)*Math.PI/180) * Math.cos(l2*Math.PI/180);
-            const x = Math.cos(l1*Math.PI/180)*Math.sin(l2*Math.PI/180) - Math.sin(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.cos((o2-o1)*Math.PI/180);
-            return (Math.atan2(y, x)*180/Math.PI + 360) % 360;
+            const lat1 = l1 * Math.PI / 180, lat2 = l2 * Math.PI / 180, dLon = (o2 - o1) * Math.PI / 180;
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
         }
 
         updateProgress('step1');
