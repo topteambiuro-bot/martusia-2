@@ -34,20 +34,21 @@
 
         #timer-display { font-size: 1.5rem; font-weight: bold; color: var(--primary); margin: 20px 0; font-family: monospace; }
         
-        #easy-mode-alert {
+        /* ALERTY I POWODY */
+        #easy-mode-alert, #reason-popup {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(255, 45, 85, 0.95); padding: 20px; border-radius: 25px;
             font-weight: bold; font-size: 0.9rem; z-index: 100; display: none;
-            animation: fadeInOut 4s forwards; pointer-events: none; border: 2px solid white;
-            box-shadow: 0 0 30px var(--primary);
+            border: 2px solid white; box-shadow: 0 0 30px var(--primary);
+            pointer-events: none; width: 80%;
         }
-        @keyframes fadeInOut { 0% { opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translate(-50%, -40%); } 15% { opacity: 1; transform: translate(-50%, -50%); } 85% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, -60%); } }
 
         #arrow { font-size: 100px; color: var(--primary); filter: drop-shadow(0 0 25px var(--primary)); margin: 20px 0; transition: transform 0.2s ease-out; }
         #distance { font-size: 5rem; font-weight: 900; text-shadow: var(--glow); }
         
-        #petal-area { position: relative; width: 280px; height: 280px; background: rgba(0,0,0,0.2); border-radius: 50%; margin-top: 15px; }
-        .petal { position: absolute; cursor: pointer; font-size: 2rem; transition: 0.4s; }
+        #petal-area { position: relative; width: 280px; height: 280px; background: rgba(0,0,0,0.2); border-radius: 50%; margin-top: 15px; overflow: hidden; }
+        .petal { position: absolute; cursor: pointer; font-size: 2rem; transition: 0.4s; user-select: none; }
         .memory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
         .card { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; border: 1px solid rgba(255,255,255,0.1); }
         .card.flipped { background: var(--primary); box-shadow: var(--glow); }
@@ -62,7 +63,6 @@
     <div id="lock-screen" class="screen active">
         <h1>Misja rozpocznie się za:</h1>
         <div id="timer-display">--:--:--:--</div>
-        <p style="font-size: 0.8rem; opacity: 0.7;">14.02.2026 o 18:00</p>
         <button id="start-btn" class="btn-main" disabled onclick="next('step1')">Rozpocznij misję</button>
         <div style="margin-top: 40px; opacity: 0.3; font-size: 0.6rem;" onclick="showTestMode()">Tryb testowy</div>
         <div id="test-input-area" style="display:none; margin-top:10px;">
@@ -86,8 +86,9 @@
 
     <div id="step2" class="screen">
         <h1>Ogród Wspomnień</h1>
+        <div id="reason-popup"></div>
         <div id="petal-area"></div>
-        <p id="petal-count" style="margin-top:15px; color:var(--accent); font-weight:bold;">Zostało: 12</p>
+        <p id="petal-count" style="margin-top:15px; color:var(--accent); font-weight:bold;">Zbierz wszystkie powody: 12</p>
     </div>
 
     <div id="step3" class="screen">
@@ -117,7 +118,13 @@
     <script>
         const targetDate = new Date("2026-02-14T18:00:00").getTime();
         const targetPos = { lat: 50.398567, lon: 18.913362 };
-        const CORRECT_ANSWER = "pimpek"; 
+        const CORRECT_ANSWER = "pimpek";
+        const reasons = [
+            "Za Twój uśmiech", "Za to jak o mnie dbasz", "Za Twoje wsparcie", 
+            "Za wspólne wieczory", "Za to, że jesteś sobą", "Za Twój zapach",
+            "Za bycie moją motywacją", "Za Twoją cierpliwość", "Za najpiękniejsze oczy",
+            "Za każdy wspólny dzień", "Za nasze plany", "Za to, że mnie kochasz"
+        ];
         const screens = ['lock-screen', 'step1', 'step-flappy', 'step2', 'step3', 'step4', 'step5', 'final'];
 
         // TIMER
@@ -134,7 +141,7 @@
         }, 1000);
 
         function showTestMode() { document.getElementById('test-input-area').style.display = 'block'; }
-        function checkTestPass() { if(document.getElementById('test-pass').value === "Feniks") { document.getElementById("start-btn").disabled = false; alert("Odblokowano tryb testowy!"); } }
+        function checkTestPass() { if(document.getElementById('test-pass').value === "Feniks") { document.getElementById("start-btn").disabled = false; alert("Odblokowano!"); } }
 
         function updateProgress(id) {
             const idx = screens.indexOf(id);
@@ -173,85 +180,75 @@
         }
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(!aArrow) aArrow = {x: 135, y: 250}; });
 
-        // FLAPPY (POPRAWIONA SEKCYJA Z LICZNIKIEM I UŁATWIENIEM)
+        // FLAPPY
         const fCanvas = document.getElementById('flappy-canvas'), fCtx = fCanvas.getContext('2d');
         let heart = { y: 150, v: 0 }, pipes = [], fScore = 0, fActive = false, fLimit = 35, deathCount = 0;
-        
-        function initFlappy() { 
-            fActive = true; 
-            heart.y = 150; 
-            heart.v = 0; 
-            pipes = []; 
-            fScore = 0; 
-            spawnPipe(); 
-            drawFlappy(); 
-        }
-        
+        function initFlappy() { fActive = true; heart.y = 150; heart.v = 0; pipes = []; fScore = 0; spawnPipe(); drawFlappy(); }
         function spawnPipe() { pipes.push({ x: 300, top: Math.random()*150+50, passed: false }); }
-        
         function handleDeath() { 
-            fActive = false; 
-            deathCount++; 
-            // LOGIKA UŁATWIENIA PO 10 PRÓBACH
+            fActive = false; deathCount++; 
             if(deathCount === 10) { 
                 fLimit = 20; 
                 document.getElementById('flappy-desc').innerText = "Zdobądź 20 punktów (Ułatwione)"; 
                 document.getElementById('easy-mode-alert').style.display = 'block'; 
+                setTimeout(() => document.getElementById('easy-mode-alert').style.display = 'none', 4000);
             } 
             setTimeout(initFlappy, 600); 
         }
-
         function drawFlappy() {
             if(!fActive || !document.getElementById('step-flappy').classList.contains('active')) return;
             fCtx.clearRect(0,0,300,350);
             heart.v += 0.22; heart.y += heart.v;
             fCtx.font = "25px Arial"; fCtx.fillText("❤️", 50, heart.y);
-            
             for(let i=pipes.length-1; i>=0; i--) {
                 pipes[i].x -= 2.2;
                 fCtx.fillStyle = "rgba(255,45,85,0.5)";
                 fCtx.fillRect(pipes[i].x, 0, 40, pipes[i].top);
                 fCtx.fillRect(pipes[i].x, pipes[i].top + 100, 40, 350);
-                
-                // Kolizja
                 if(50 > pipes[i].x && 50 < pipes[i].x+40 && (heart.y-20 < pipes[i].top || heart.y+5 > pipes[i].top+100)) handleDeath();
-                
-                // Punktacja
-                if(!pipes[i].passed && pipes[i].x < 50) { 
-                    fScore++; 
-                    pipes[i].passed = true; 
-                    if(fScore >= fLimit) { fActive = false; next('step2'); return; } 
-                }
+                if(!pipes[i].passed && pipes[i].x < 50) { fScore++; pipes[i].passed = true; if(fScore >= fLimit) { fActive = false; next('step2'); return; } }
                 if(pipes[i].x < -40) pipes.splice(i,1);
             }
-            
             if(pipes.length > 0 && pipes[pipes.length-1].x < 140) spawnPipe();
             if(heart.y > 350 || heart.y < 0) handleDeath();
-            
-            // GUI GRY
-            fCtx.fillStyle = "white"; 
-            fCtx.font = "bold 16px Arial"; 
-            fCtx.fillText("PKT: "+fScore+" / " + fLimit, 15, 25);
-            
-            // WIDOCZNY LICZNIK PRÓB
-            fCtx.fillStyle = "rgba(255,255,255,0.5)"; 
-            fCtx.font = "12px Arial"; 
+            fCtx.fillStyle = "white"; fCtx.font = "bold 14px Arial"; 
+            fCtx.fillText("PKT: "+fScore+" / " + fLimit, 10, 25);
+            fCtx.fillStyle = "rgba(255,255,255,0.6)";
             fCtx.fillText("PRÓBA: " + (deathCount+1), 220, 25);
-            
             requestAnimationFrame(drawFlappy);
         }
         fCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); heart.v = -4.5; });
 
-        // PŁATKI
+        // OGRÓD WSPOMNIEŃ (Z NAPISAMI)
         function initPetals() {
             const area = document.getElementById('petal-area'); area.innerHTML = '';
-            let left = 12; document.getElementById('petal-count').innerText = "Zostało: 12";
-            for(let i=0; i<12; i++) {
-                const p = document.createElement('div'); p.className = 'petal'; p.innerText = '🌸';
-                p.style.left = Math.random()*230+'px'; p.style.top = Math.random()*230+'px';
-                p.onclick = () => { p.remove(); left--; document.getElementById('petal-count').innerText = "Zostało: " + left; if(left === 0) next('step3'); };
+            let left = reasons.length;
+            document.getElementById('petal-count').innerText = "Zbierz wszystkie powody: " + left;
+            
+            reasons.forEach((text, i) => {
+                const p = document.createElement('div');
+                p.className = 'petal'; p.innerText = '🌸';
+                p.style.left = Math.random()*230+'px';
+                p.style.top = Math.random()*230+'px';
+                
+                p.onclick = () => {
+                    // Pokaż napis
+                    const pop = document.getElementById('reason-popup');
+                    pop.innerText = text;
+                    pop.style.display = 'block';
+                    pop.style.animation = 'none';
+                    pop.offsetHeight; // trigger reflow
+                    pop.style.animation = 'fadeInOut 1.5s forwards';
+                    
+                    p.style.transform = 'scale(0) rotate(180deg)';
+                    setTimeout(() => p.remove(), 400);
+                    
+                    left--;
+                    document.getElementById('petal-count').innerText = "Pozostało: " + left;
+                    if(left === 0) setTimeout(() => next('step3'), 2000);
+                };
                 area.appendChild(p);
-            }
+            });
         }
 
         // SZYFR
