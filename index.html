@@ -38,9 +38,10 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(255, 45, 85, 0.95); padding: 20px; border-radius: 25px;
             font-weight: bold; font-size: 0.9rem; z-index: 100; display: none;
-            animation: fadeInOut 3s forwards; pointer-events: none; border: 2px solid white;
+            animation: fadeInOut 4s forwards; pointer-events: none; border: 2px solid white;
+            box-shadow: 0 0 30px var(--primary);
         }
-        @keyframes fadeInOut { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes fadeInOut { 0% { opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; } }
 
         #arrow { font-size: 100px; color: var(--primary); filter: drop-shadow(0 0 25px var(--primary)); margin: 20px 0; transition: transform 0.2s ease-out; }
         #distance { font-size: 5rem; font-weight: 900; text-shadow: var(--glow); }
@@ -133,7 +134,7 @@
         }, 1000);
 
         function showTestMode() { document.getElementById('test-input-area').style.display = 'block'; }
-        function checkTestPass() { if(document.getElementById('test-pass').value === "Feniks") { document.getElementById("start-btn").disabled = false; alert("Odblokowano!"); } }
+        function checkTestPass() { if(document.getElementById('test-pass').value === "Feniks") { document.getElementById("start-btn").disabled = false; alert("Odblokowano tryb testowy!"); } }
 
         function updateProgress(id) {
             const idx = screens.indexOf(id);
@@ -172,13 +173,26 @@
         }
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(!aArrow) aArrow = {x: 135, y: 250}; });
 
-        // FLAPPY (Z LICZNIKIEM PRÓB I UŁATWIENIEM)
+        // FLAPPY (POPRAWIONA SEKCYJA Z LICZNIKIEM I UŁATWIENIEM)
         const fCanvas = document.getElementById('flappy-canvas'), fCtx = fCanvas.getContext('2d');
         let heart = { y: 150, v: 0 }, pipes = [], fScore = 0, fActive = false, fLimit = 35, deathCount = 0;
-        function initFlappy() { fActive = true; heart.y = 150; heart.v = 0; pipes = []; fScore = 0; spawnPipe(); drawFlappy(); }
+        
+        function initFlappy() { 
+            fActive = true; 
+            heart.y = 150; 
+            heart.v = 0; 
+            pipes = []; 
+            fScore = 0; 
+            spawnPipe(); 
+            drawFlappy(); 
+        }
+        
         function spawnPipe() { pipes.push({ x: 300, top: Math.random()*150+50, passed: false }); }
+        
         function handleDeath() { 
-            fActive = false; deathCount++; 
+            fActive = false; 
+            deathCount++; 
+            // LOGIKA UŁATWIENIA PO 10 PRÓBACH
             if(deathCount === 10) { 
                 fLimit = 20; 
                 document.getElementById('flappy-desc').innerText = "Zdobądź 20 punktów (Ułatwione)"; 
@@ -186,24 +200,44 @@
             } 
             setTimeout(initFlappy, 600); 
         }
+
         function drawFlappy() {
             if(!fActive || !document.getElementById('step-flappy').classList.contains('active')) return;
             fCtx.clearRect(0,0,300,350);
             heart.v += 0.22; heart.y += heart.v;
             fCtx.font = "25px Arial"; fCtx.fillText("❤️", 50, heart.y);
+            
             for(let i=pipes.length-1; i>=0; i--) {
                 pipes[i].x -= 2.2;
                 fCtx.fillStyle = "rgba(255,45,85,0.5)";
                 fCtx.fillRect(pipes[i].x, 0, 40, pipes[i].top);
                 fCtx.fillRect(pipes[i].x, pipes[i].top + 100, 40, 350);
+                
+                // Kolizja
                 if(50 > pipes[i].x && 50 < pipes[i].x+40 && (heart.y-20 < pipes[i].top || heart.y+5 > pipes[i].top+100)) handleDeath();
-                if(!pipes[i].passed && pipes[i].x < 50) { fScore++; pipes[i].passed = true; if(fScore >= fLimit) { fActive = false; next('step2'); return; } }
+                
+                // Punktacja
+                if(!pipes[i].passed && pipes[i].x < 50) { 
+                    fScore++; 
+                    pipes[i].passed = true; 
+                    if(fScore >= fLimit) { fActive = false; next('step2'); return; } 
+                }
                 if(pipes[i].x < -40) pipes.splice(i,1);
             }
+            
             if(pipes.length > 0 && pipes[pipes.length-1].x < 140) spawnPipe();
             if(heart.y > 350 || heart.y < 0) handleDeath();
-            fCtx.fillStyle = "white"; fCtx.font = "bold 16px Arial"; fCtx.fillText("PKT: "+fScore+" / " + fLimit, 15, 25);
-            fCtx.fillStyle = "rgba(255,255,255,0.5)"; fCtx.font = "12px Arial"; fCtx.fillText("PRÓBA: " + (deathCount+1), 220, 25);
+            
+            // GUI GRY
+            fCtx.fillStyle = "white"; 
+            fCtx.font = "bold 16px Arial"; 
+            fCtx.fillText("PKT: "+fScore+" / " + fLimit, 15, 25);
+            
+            // WIDOCZNY LICZNIK PRÓB
+            fCtx.fillStyle = "rgba(255,255,255,0.5)"; 
+            fCtx.font = "12px Arial"; 
+            fCtx.fillText("PRÓBA: " + (deathCount+1), 220, 25);
+            
             requestAnimationFrame(drawFlappy);
         }
         fCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); heart.v = -4.5; });
