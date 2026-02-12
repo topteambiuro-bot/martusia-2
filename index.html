@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Misja: Serce</title>
+    <style>
+        :root {
+            --primary: #ff2d55;
+            --accent: #ffb3c1;
+            --bg: #0a0204;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glow: 0 0 20px rgba(255, 45, 85, 0.5);
+        }
+
+        /* PASEK POSTĘPU */
+        .progress-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 8px;
+            background: rgba(255, 255, 255, 0.1); z-index: 1000;
+        }
+        #progress-bar {
+            width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), #ff5e7e);
+            box-shadow: 0 0 15px var(--primary); transition: width 0.6s ease;
+        }
+        #step-counter {
+            position: fixed; top: 15px; right: 15px; font-size: 0.7rem;
+            color: var(--accent); letter-spacing: 1px; z-index: 1000; opacity: 0.8;
+        }
+
+        body {
+            margin: 0; padding: 0; display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; background: var(--bg); color: #fff;
+            font-family: 'Segoe UI', Roboto, sans-serif; text-align: center; overflow: hidden;
+            background: radial-gradient(circle at center, #1e0509 0%, #0a0204 100%);
+        }
+
+        .bg-pulse {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,45,85,0.05) 0%, transparent 70%);
+            animation: pulseBg 8s infinite alternate; z-index: -1;
+        }
+        @keyframes pulseBg { from { transform: scale(1); opacity: 0.5; } to { transform: scale(1.5); opacity: 0.8; } }
+
+        .screen {
+            display: none; width: 85%; max-width: 400px; padding: 30px 20px;
+            background: var(--glass); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5); animation: slideUp 0.6s ease-out;
+            z-index: 10; flex-direction: column; align-items: center;
+            position: relative;
+        }
+        .active { display: flex; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 4px; color: var(--accent); margin-bottom: 20px; text-shadow: var(--glow); }
+        .btn-main { background: linear-gradient(45deg, var(--primary), #ff5e7e); border: none; color: white; padding: 16px 35px; border-radius: 50px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: 0.3s; margin-top: 20px; box-shadow: 0 5px 15px rgba(255, 45, 85, 0.4); }
+        .btn-ghost { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 10px 20px; border-radius: 50px; font-size: 0.7rem; cursor: pointer; margin-top: 15px; }
+
+        input { background: rgba(0,0,0,0.3); border: 1px solid var(--primary); color: white; padding: 15px; border-radius: 15px; text-align: center; font-size: 1.2rem; width: 80%; margin-top: 15px; outline: none; }
+        
+        #petal-area { position: relative; width: 280px; height: 280px; background: rgba(0,0,0,0.2); border-radius: 50%; margin-top: 15px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .petal { position: absolute; cursor: pointer; font-size: 2rem; transition: 0.4s; z-index: 5; }
+        
+        .memory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+        .card { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .card.flipped { background: var(--primary); box-shadow: var(--glow); }
+
+        #arrow { font-size: 100px; color: var(--primary); filter: drop-shadow(0 0 25px var(--primary)); margin: 20px 0; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #distance { font-size: 5rem; font-weight: 900; text-shadow: var(--glow); }
+
+        .note-popup { position: fixed; color: var(--accent); font-style: italic; pointer-events: none; animation: floatUp 1s forwards; z-index: 100; }
+        @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-50px); } }
+
+        /* NOWY STYL DLA POWIADOMIENIA */
+        #easy-mode-alert {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 45, 85, 0.9); padding: 15px 25px; border-radius: 20px;
+            font-weight: bold; font-size: 0.9rem; z-index: 100; display: none;
+            animation: fadeInOut 3s forwards; pointer-events: none;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-container"><div id="progress-bar"></div></div>
+    <div id="step-counter">KROK 1 / 7</div>
+    <div class="bg-pulse"></div>
+
+    <div id="step1" class="screen active">
+        <h1>Próba Amora</h1>
+        <p style="font-size: 0.8rem; opacity: 0.7;">Traf 7 razy bez pomyłki.</p>
+        <canvas id="amor-canvas" width="300" height="300" style="background:rgba(0,0,0,0.2); border-radius:20px;"></canvas>
+        <button id="restore-gps" class="btn-ghost" style="display:none;" onclick="next('step5')">Już Ci się udało, przejdź do GPS</button>
+    </div>
+
+    <div id="step-flappy" class="screen">
+        <h1>Lot Serca</h1>
+        <p id="flappy-desc" style="font-size: 0.8rem; opacity: 0.7;">Zdobądź 35 punktów!</p>
+        <div id="easy-mode-alert">Kochanie, ułatwiam Ci zadanie! ❤️<br>Limit: 20 pkt</div>
+        <canvas id="flappy-canvas" width="300" height="350" style="background:rgba(0,0,0,0.2); border-radius:20px;"></canvas>
+    </div>
+
+    <div id="step2" class="screen">
+        <h1>Ogród Wspomnień</h1>
+        <p style="font-size: 0.8rem;">Zerwij wszystkie płatki...</p>
+        <div id="petal-area"></div>
+        <p id="petal-count" style="margin-top:15px; color:var(--accent); font-weight:bold;">Zostało: 12</p>
+    </div>
+
+    <div id="step3" class="screen">
+        <h1>Szyfr Serca</h1>
+        <p>RUDE KOCHANE STWORZENIE?</p>
+        <input type="text" id="answerInput" placeholder="Odpowiedź...">
+        <button class="btn-main" onclick="checkAnswer()">Zweryfikuj</button>
+    </div>
+
+    <div id="step4" class="screen">
+        <h1>Synchronizacja</h1>
+        <p>Połącz symbole miłości</p>
+        <div class="memory-grid" id="grid"></div>
+    </div>
+
+    <div id="step5" class="screen">
+        <h1>Namierzanie...</h1>
+        <div id="arrow">➔</div>
+        <div id="distance">--</div>
+        <div style="letter-spacing: 5px; font-size: 0.7rem; opacity: 0.7;">METRÓW</div>
+    </div>
+
+    <div id="final" class="screen">
+        <h1>Jesteś u celu! ❤️</h1>
+        <p>"Spójrz przed siebie i znajdź to,<br>co dla Ciebie przygotowałem."</p>
+        <div style="font-size: 70px; filter: drop-shadow(0 0 20px gold);">🎁</div>
+    </div>
+
+    <script>
+        const targetPos = { lat: 50.398567, lon: 18.913362 };
+        const CORRECT_ANSWER = "pimpek"; 
+        const loveNotes = ["Jesteś cudowna", "Mój skarb", "Kocham Cię", "Za Twój uśmiech", "Za nasze chwile", "Moja jedyna", "Dziękuję, że jesteś", "Zawsze Ty", "Na zawsze", "Moje szczęście", "Uwielbiam Cię", "Mój świat"];
+        const screens = ['step1', 'step-flappy', 'step2', 'step3', 'step4', 'step5', 'final'];
+
+        if(localStorage.getItem('gps_unlocked') === 'true') {
+            document.getElementById('restore-gps').style.display = 'block';
+        }
+
+        function updateProgress(id) {
+            const index = screens.indexOf(id);
+            const progress = ((index + 1) / screens.length) * 100;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            document.getElementById('step-counter').innerText = `KROK ${index + 1} / ${screens.length}`;
+        }
+
+        function next(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            updateProgress(id);
+
+            if(id === 'step5') {
+                localStorage.setItem('gps_unlocked', 'true');
+                startGps();
+            }
+            if(id === 'step-flappy') initFlappy();
+            if(id === 'step2') initPetals();
+            if(id === 'step4') initMemory();
+        }
+
+        // --- GRA 1: AMOR ---
+        const canvas = document.getElementById('amor-canvas');
+        const ctx = canvas.getContext('2d');
+        let hits = 0, aArrow = null, targetH = { x: 50, y: 50, dir: 2.5 };
+
+        function drawAmor() {
+            if(!document.getElementById('step1').classList.contains('active')) return;
+            ctx.clearRect(0,0,300,300);
+            targetH.x += targetH.dir;
+            if(targetH.x > 260 || targetH.x < 10) targetH.dir *= -1;
+            ctx.font = "30px Arial"; ctx.fillText("💖", targetH.x, 60);
+            ctx.fillText("🏹", 135, 280);
+            if(aArrow) {
+                aArrow.y -= 8; ctx.fillText("💘", aArrow.x, aArrow.y);
+                if(aArrow.y < 70 && aArrow.y > 30 && aArrow.x > targetH.x - 15 && aArrow.x < targetH.x + 35) { 
+                    hits++; aArrow = null; 
+                    if(hits >= 7) { setTimeout(() => next('step-flappy'), 500); return; }
+                }
+                else if(aArrow.y < 0) { hits = 0; aArrow = null; alert("Pudło! Reset!"); }
+            }
+            ctx.fillStyle = "white"; ctx.font = "14px Arial"; 
+            ctx.fillText("Trafienia: " + hits + "/7", 10, 20);
+            requestAnimationFrame(drawAmor);
+        }
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(!aArrow) aArrow = {x: 135, y: 250}; });
+        drawAmor();
+
+        // --- GRA 2: FLAPPY HEART (Z LICZNIKIEM PRÓB) ---
+        const fCanvas = document.getElementById('flappy-canvas');
+        const fCtx = fCanvas.getContext('2d');
+        let heart = { y: 150, v: 0 }, pipes = [], fScore = 0, fActive = false, deathCount = 0, fLimit = 35;
+
+        function initFlappy() { fActive = true; heart.y = 150; heart.v = 0; pipes = []; fScore = 0; spawnPipe(); drawFlappy(); }
+        function spawnPipe() { pipes.push({ x: 300, top: Math.random()*150+50, passed: false }); }
+        
+        function drawFlappy() {
+            if(!fActive || !document.getElementById('step-flappy').classList.contains('active')) return;
+            fCtx.clearRect(0,0,300,350);
+            heart.v += 0.22; heart.y += heart.v;
+            fCtx.font = "25px Arial"; fCtx.fillText("❤️", 50, heart.y);
+            
+            for(let i=pipes.length-1; i>=0; i--) {
+                pipes[i].x -= 2.2;
+                fCtx.fillStyle = "rgba(255,45,85,0.5)";
+                fCtx.fillRect(pipes[i].x, 0, 40, pipes[i].top);
+                fCtx.fillRect(pipes[i].x, pipes[i].top + 100, 40, 350);
+                if(50 > pipes[i].x && 50 < pipes[i].x+40 && (heart.y-20 < pipes[i].top || heart.y+5 > pipes[i].top+100)) handleDeath();
+                if(!pipes[i].passed && pipes[i].x < 50) { 
+                    fScore++; pipes[i].passed = true; 
+                    if(fScore >= fLimit) { fActive = false; next('step2'); return; } 
+                }
+                if(pipes[i].x < -40) pipes.splice(i,1);
+            }
+            if(pipes.length > 0 && pipes[pipes.length-1].x < 140) spawnPipe();
+            if(heart.y > 350 || heart.y < 0) handleDeath();
+
+            // Interfejs gry
+            fCtx.fillStyle = "white"; 
+            fCtx.font = "bold 16px Arial"; 
+            fCtx.fillText("PUNKTY: "+fScore+" / " + fLimit, 15, 25);
+            fCtx.font = "12px Arial";
+            fCtx.fillStyle = "rgba(255,255,255,0.6)";
+            fCtx.fillText("PRÓBA: " + (deathCount + 1), 230, 25);
+
+            requestAnimationFrame(drawFlappy);
+        }
+
+        function handleDeath() { 
+            fActive = false; 
+            deathCount++; 
+            if(deathCount === 10) { 
+                fLimit = 20; 
+                document.getElementById('flappy-desc').innerText = "Zdobądź 20 punktów (Ułatwione)"; 
+                document.getElementById('easy-mode-alert').style.display = 'block';
+            } 
+            setTimeout(initFlappy, 600); 
+        }
+        fCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); heart.v = -4.5; });
+
+        // --- RESZTA LOGIKI ---
+        function initPetals() {
+            const area = document.getElementById('petal-area'); area.innerHTML = '';
+            let left = loveNotes.length;
+            loveNotes.forEach(text => {
+                const p = document.createElement('div'); p.className = 'petal'; p.innerText = '🌸';
+                p.style.left = Math.random()*230+10+'px'; p.style.top = Math.random()*230+10+'px';
+                p.onclick = (e) => {
+                    const n = document.createElement('div'); n.className = 'note-popup'; n.innerText = text;
+                    n.style.left = e.pageX+'px'; n.style.top = e.pageY+'px';
+                    document.body.appendChild(n); setTimeout(()=>n.remove(), 1000);
+                    p.style.transform = "scale(0)"; setTimeout(()=>p.remove(), 400);
+                    left--; document.getElementById('petal-count').innerText = "Zostało: "+left;
+                    if(left === 0) setTimeout(()=>next('step3'), 800);
+                };
+                area.appendChild(p);
+            });
+        }
+
+        function checkAnswer() { 
+            const val = document.getElementById('answerInput').value.toLowerCase().trim();
+            if(val === CORRECT_ANSWER) next('step4'); 
+            else alert("Zła odpowiedź! ❤️"); 
+        }
+
+        function initMemory() {
+            const grid = document.getElementById('grid'); grid.innerHTML = '';
+            const items = ['❤️','🔥','💍','❤️','🔥','💍'].sort(()=>Math.random()-0.5);
+            items.forEach(icon => {
+                const c = document.createElement('div'); c.className = 'card';
+                c.onclick = () => {
+                    if(c.classList.contains('flipped') || c.classList.contains('matched')) return;
+                    c.innerText = icon; c.classList.add('flipped');
+                    const active = document.querySelectorAll('#step4 .flipped:not(.matched)');
+                    if(active.length === 2) {
+                        if(active[0].innerText === active[1].innerText) {
+                            active.forEach(a => a.classList.add('matched'));
+                            if(document.querySelectorAll('.matched').length === 6) setTimeout(()=>next('step5'), 800);
+                        } else { setTimeout(() => active.forEach(a => {a.classList.remove('flipped'); a.innerText=''}), 600); }
+                    }
+                };
+                grid.appendChild(c);
+            });
+        }
+
+        function startGps() {
+            navigator.geolocation.watchPosition(pos => {
+                const d = calcDist(pos.coords.latitude, pos.coords.longitude, targetPos.lat, targetPos.lon);
+                const b = calcBear(pos.coords.latitude, pos.coords.longitude, targetPos.lat, targetPos.lon);
+                document.getElementById('distance').innerText = Math.round(d);
+                document.getElementById('arrow').style.transform = `rotate(${b - 90}deg)`;
+                if(d < 15) next('final');
+            }, (err) => { console.log("GPS error"); }, {enableHighAccuracy: true});
+        }
+
+        function calcDist(l1, o1, l2, o2) {
+            const R = 6371000;
+            const dL = (l2-l1)*Math.PI/180, dO = (o2-o1)*Math.PI/180;
+            const a = Math.sin(dL/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dO/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        function calcBear(l1, o1, l2, o2) {
+            const y = Math.sin((o2-o1)*Math.PI/180) * Math.cos(l2*Math.PI/180);
+            const x = Math.cos(l1*Math.PI/180)*Math.sin(l2*Math.PI/180) - Math.sin(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.cos((o2-o1)*Math.PI/180);
+            return (Math.atan2(y, x)*180/Math.PI + 360) % 360;
+        }
+
+        updateProgress('step1');
+    </script>
+</body>
+</html>
